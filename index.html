@@ -1,0 +1,106 @@
+!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BUENO KEYS — Gerador</title>
+<style>
+:root{color-scheme:dark;--bg:#080808;--panel:#111;--line:#3a3a3a;--white:#f5f5f5;--muted:#aaa}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#242424 0,#080808 55%);color:var(--white);font:16px system-ui,Arial,sans-serif;min-height:100vh;padding:24px}
+main{max-width:760px;margin:25px auto;border:1px solid #555;border-radius:20px;background:#0c0c0cf2;box-shadow:0 0 35px #000;padding:clamp(18px,4vw,34px)}
+header{text-align:center;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:24px}
+.crown{font-size:35px}h1{font-size:clamp(30px,7vw,48px);letter-spacing:2px;margin:3px 0;font-weight:900}header p{color:var(--muted);margin:0;letter-spacing:3px;font-size:12px}
+h2{font-size:18px;margin:0 0 14px}.durations{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+button{background:#151515;color:#fff;border:1px solid #555;border-radius:12px;padding:13px 10px;font-weight:700;cursor:pointer}
+button:hover,button.selected{border-color:#fff;box-shadow:0 0 12px #aaa}
+#generate{width:100%;font-size:20px;padding:17px;margin:18px 0}
+section{background:#111;border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}
+.keyrow{display:flex;gap:10px;align-items:center}.keyrow input{min-width:0;flex:1}
+input{width:100%;padding:14px;background:#050505;border:1px solid #555;border-radius:9px;color:#fff;font-size:16px}
+#newKey{font-size:18px;font-weight:800;letter-spacing:1px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px}.meta div{background:#080808;padding:13px;border-radius:9px;color:#ccc}.meta strong{display:block;color:white;margin-top:5px}
+.status{font-weight:800}.active{color:#fff}.expired{color:#aaa}
+#message{min-height:24px;color:#ddd;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 6px;border-bottom:1px solid #333}th{color:#bbb}
+.small{font-size:12px;color:#999;line-height:1.5}.danger{border-color:#777;color:#ddd}
+@media(max-width:520px){body{padding:10px}.durations{grid-template-columns:repeat(2,1fr)}.keyrow{flex-direction:column;align-items:stretch}.meta{grid-template-columns:1fr}table{font-size:11px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="crown">♛</div><h1>BUENO KEYS</h1><p>GERADOR DE KEYS</p></header>
+<section>
+<h2>Selecione a validade</h2>
+<div class="durations">
+<button class="selected" data-days="1">1 DIA</button>
+<button data-days="2">2 DIAS</button>
+<button data-days="7">7 DIAS</button>
+<button data-days="30">30 DIAS</button>
+</div>
+<button id="generate">♢ GERAR KEY</button>
+<div id="message" role="status">Escolha o prazo e gere sua primeira key.</div>
+</section>
+<section>
+<h2>Sua key</h2>
+<div class="keyrow"><input id="newKey" readonly placeholder="Sua key aparecerá aqui"><button id="copy">COPIAR</button></div>
+<div class="meta" style="margin-top:12px">
+<div>Expira em<strong id="expires">—</strong></div>
+<div>Status<strong id="status" class="status">—</strong></div>
+</div>
+</section>
+<section>
+<h2>Verificar key</h2>
+<div class="keyrow"><input id="checkKey" placeholder="Cole uma key para verificar"><button id="verify">VERIFICAR</button></div>
+<div id="verifyResult" class="small" style="margin-top:10px"></div>
+</section>
+<section>
+<h2>Keys geradas neste navegador</h2>
+<div style="overflow-x:auto"><table><thead><tr><th>KEY</th><th>VALIDADE</th><th>STATUS</th></tr></thead><tbody id="history"><tr><td colspan="3">Nenhuma key gerada ainda.</td></tr></tbody></table></div>
+<button id="clear" class="danger" style="margin-top:14px">APAGAR HISTÓRICO LOCAL</button>
+</section>
+<p class="small">Aviso: esta é uma versão local de demonstração. As keys ficam salvas somente neste navegador/dispositivo. Para validar keys em vários aparelhos ou proteger um painel real, é necessário um servidor com banco de dados e autenticação; este arquivo sozinho não oferece segurança contra adulteração.</p>
+</main>
+<script>
+const storeName='bueno_keys_v1';
+let selectedDays=1;
+const $=id=>document.getElementById(id);
+const load=()=>{try{return JSON.parse(localStorage.getItem(storeName)||'[]')}catch{return []}};
+const save=items=>localStorage.setItem(storeName,JSON.stringify(items));
+const fmt=ms=>new Date(ms).toLocaleString('pt-BR');
+const isExpired=item=>Date.now()>=item.expiresAt;
+function render(){
+ const items=load();
+ $('history').innerHTML=items.length?items.slice().reverse().map(x=>`<tr><td>${x.key}</td><td>${x.days} dia(s)</td><td>${isExpired(x)?'EXPIRADA':'ATIVA'}</td></tr>`).join(''):'<tr><td colspan="3">Nenhuma key gerada ainda.</td></tr>';
+}
+document.querySelectorAll('[data-days]').forEach(b=>b.addEventListener('click',()=>{
+ selectedDays=Number(b.dataset.days);
+ document.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('selected',x===b));
+}));
+function randomKey(){
+ const bytes=new Uint8Array(8);crypto.getRandomValues(bytes);
+ return 'BK-'+Array.from(bytes,b=>b.toString(16).padStart(2,'0').toUpperCase()).join('').match(/.{1,4}/g).join('-');
+}
+$('generate').addEventListener('click',()=>{
+ const now=Date.now(), item={key:randomKey(),days:selectedDays,createdAt:now,expiresAt:now+selectedDays*86400000};
+ const items=load();items.push(item);save(items);
+ $('newKey').value=item.key;$('expires').textContent=fmt(item.expiresAt);
+ $('status').textContent='ATIVA';$('status').className='status active';
+ $('message').textContent='Key criada e salva neste navegador.';
+ render();
+});
+$('copy').addEventListener('click',async()=>{
+ const v=$('newKey').value;if(!v){$('message').textContent='Gere uma key primeiro.';return}
+ try{await navigator.clipboard.writeText(v);$('message').textContent='Key copiada!'}catch{$('newKey').select();document.execCommand('copy');$('message').textContent='Key copiada.'}
+});
+$('verify').addEventListener('click',()=>{
+ const key=$('checkKey').value.trim(), item=load().find(x=>x.key===key);
+ if(!item){$('verifyResult').textContent='Key não encontrada neste navegador.';return}
+ $('verifyResult').textContent=isExpired(item)?'KEY EXPIRADA — validade encerrada em '+fmt(item.expiresAt):'KEY VÁLIDA — expira em '+fmt(item.expiresAt);
+});
+$('clear').addEventListener('click',()=>{
+ if(confirm('Apagar todas as keys salvas neste navegador?')){localStorage.removeItem(storeName);render();$('message').textContent='Histórico local apagado.'}
+});
+render();
+</script>
+</body>
+</html>
